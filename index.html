@@ -9,6 +9,7 @@
 <meta property="og:description" content="The name is the sentence. No trademark conflict, no UDRP exposure.">
 <meta property="og:type" content="website">
 <meta name="robots" content="index,follow">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23111'/%3E%3Ctext x='32' y='44' font-family='Georgia,serif' font-size='38' fill='%23fff' text-anchor='middle'%3Er%3C/text%3E%3C/svg%3E">
 <style>
 :root{
   --bg:#faf9f7; --panel:#fff; --ink:#16181d; --muted:#5c6270;
@@ -70,7 +71,7 @@ body.ru-on span.ru{display:inline}
 <div class="wrap">
 
 <header>
-  <span class="tag">Premium domain · available for acquisition</span>
+  <span class="tag"><span class="en">Premium domain · available for acquisition</span><span class="ru">Премиальный домен · доступен для покупки</span></span>
   <h1>russia<span class="tld">.solutions</span></h1>
   <p class="lede en">The name is the sentence. A short, unambiguous address for a company
     that delivers solutions on the Russian direction — trade, payments, compliance, talent.</p>
@@ -163,12 +164,51 @@ body.ru-on span.ru{display:inline}
 <script>
 (function(){
   var b=document.body,k='rs-lang',btn=document.getElementById('lang');
+  function applyLang(){
+    var ru=b.classList.contains('ru-on');
+    document.documentElement.lang = ru ? 'ru' : 'en';
+    return ru;
+  }
   try{ if(localStorage.getItem(k)==='ru') b.classList.add('ru-on'); }catch(e){}
   if(!localStorage.getItem&&/^ru/i.test(navigator.language||'')) b.classList.add('ru-on');
+  applyLang();
   btn.addEventListener('click',function(){
     b.classList.toggle('ru-on');
-    try{ localStorage.setItem(k,b.classList.contains('ru-on')?'ru':'en'); }catch(e){}
+    var ru=applyLang();
+    try{ localStorage.setItem(k,ru?'ru':'en'); }catch(e){}
+    if(window.rsTrack) window.rsTrack('lang_switch',{lang:ru?'ru':'en'});
   });
+})();
+</script>
+
+<script>
+/* Единый словарь событий воронки — RSOL-012.
+   Одно событие уходит сразу в GA4 и в Метрику, имена совпадают:
+   offer_click, question_click, email_copy, lang_switch, scroll_75, offer_submit. */
+(function(){
+  var METRIKA_ID = 112183485;
+  window.rsTrack = function(name, params){
+    params = params || {};
+    try{ if(typeof gtag==='function') gtag('event', name, params); }catch(e){}
+    try{ if(typeof ym==='function') ym(METRIKA_ID,'reachGoal',name,params); }catch(e){}
+  };
+
+  document.addEventListener('click', function(event){
+    var link = event.target.closest ? event.target.closest('a[href^="mailto:"]') : null;
+    if(!link) return;
+    var href = link.getAttribute('href') || '';
+    if(href.indexOf('inquiry') > -1)      window.rsTrack('offer_click',   {method:'mailto'});
+    else if(href.indexOf('question') > -1) window.rsTrack('question_click',{method:'mailto'});
+    else                                   window.rsTrack('email_copy',    {method:'mailto'});
+  }, true);
+
+  var fired = false;
+  window.addEventListener('scroll', function(){
+    if(fired) return;
+    var doc = document.documentElement;
+    var seen = (window.scrollY + window.innerHeight) / Math.max(doc.scrollHeight, 1);
+    if(seen >= 0.75){ fired = true; window.rsTrack('scroll_75', {}); }
+  }, {passive:true});
 })();
 </script>
 
@@ -232,6 +272,7 @@ body.ru-on span.ru{display:inline}
     }).then(function (response) {
       if (!response.ok) throw new Error('http ' + response.status);
       form.reset();
+      if (window.rsTrack) window.rsTrack('offer_submit', { method: 'form' });
       say(ru() ? 'Письмо отправлено — копия ушла вам на почту.' : 'Sent — a copy is on its way to your inbox.', false);
     }).catch(function () {
       say(ru() ? 'Форма недоступна. Откроем почтовый клиент — письмо можно отправить напрямую.' : 'The form is unavailable. Opening your mail client so you can write directly.', true);
