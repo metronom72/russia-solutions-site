@@ -53,6 +53,17 @@ body.ru-on span.ru{display:inline}
 #lang{background:none;border:1px solid var(--line);color:var(--muted);border-radius:999px;
   padding:5px 13px;font:inherit;font-size:12.5px;cursor:pointer}
 @media (max-width:560px){ul.fit{columns:1}}
+
+  #inquiry{max-width:34rem;margin:1.5rem 0 0}
+  #inquiry .row{display:flex;flex-direction:column;gap:.35rem;margin-bottom:.8rem}
+  #inquiry label{font-size:.85rem;opacity:.75}
+  #inquiry input,#inquiry textarea{font:inherit;padding:.6rem .7rem;border:1px solid rgba(128,128,128,.4);
+    border-radius:8px;background:transparent;color:inherit;width:100%;box-sizing:border-box}
+  #inquiry input:focus,#inquiry textarea:focus{outline:2px solid currentColor;outline-offset:1px}
+  #f-company{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+  #inquiry button[disabled]{opacity:.55;cursor:progress}
+  .form-status{font-size:.9rem;min-height:1.2em;margin:.6rem 0 0}
+  .form-status.err{color:#c0392b}
 </style>
 </head>
 <body>
@@ -112,6 +123,28 @@ body.ru-on span.ru{display:inline}
     <a class="btn ghost" href="mailto:sale@russia.solutions?subject=russia.solutions%20—%20question">
       <span class="en">Ask a question</span><span class="ru">Задать вопрос</span></a>
   </div>
+  <!-- Форма спрятана до решения по доступности endpoint из России (задача RSOL-026).
+       Включается снятием атрибута hidden: скрипт ниже сам ничего не делает, пока формы не видно.
+       Пока работают mailto-кнопки выше. -->
+  <form id="inquiry" novalidate hidden>
+    <div class="row">
+      <label for="f-name"><span class="en">Name</span><span class="ru">Имя</span></label>
+      <input id="f-name" name="name" type="text" maxlength="120" required autocomplete="name">
+    </div>
+    <div class="row">
+      <label for="f-email"><span class="en">Email</span><span class="ru">Почта</span></label>
+      <input id="f-email" name="email" type="email" maxlength="200" required autocomplete="email">
+    </div>
+    <div class="row">
+      <label for="f-message"><span class="en">Your offer or question</span><span class="ru">Предложение или вопрос</span></label>
+      <textarea id="f-message" name="message" rows="4" maxlength="4000" required></textarea>
+    </div>
+    <input type="text" name="company" id="f-company" tabindex="-1" autocomplete="off" aria-hidden="true">
+    <button class="btn" type="submit" id="f-submit">
+      <span class="en">Send</span><span class="ru">Отправить</span></button>
+    <p class="form-status" id="f-status" role="status" aria-live="polite"></p>
+  </form>
+
   <p class="note en">Tell us about the project the domain would serve — it helps us
     propose the right structure. Buyers are screened against OFAC, EU and UK sanctions lists
     before terms are discussed.</p>
@@ -165,5 +198,49 @@ body.ru-on span.ru{display:inline}
 </script>
 <noscript><div><img src="https://mc.yandex.ru/watch/112183485" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
 <!-- /Yandex.Metrika counter -->
+<script>
+(function () {
+  var form = document.getElementById('inquiry');
+  if (!form || form.hidden) return;
+  var status = document.getElementById('f-status');
+  var submit = document.getElementById('f-submit');
+  var ENDPOINT = 'https://dorokhovich.com/api/russia-solutions/inquiry';
+  var MAILTO = 'mailto:sale@russia.solutions?subject=russia.solutions%20%E2%80%94%20inquiry';
+  function ru() { return document.body.classList.contains('ru-on'); }
+  function say(text, isError) {
+    status.textContent = text;
+    status.className = 'form-status' + (isError ? ' err' : '');
+  }
+  form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    var data = {
+      name: form.name.value.trim(),
+      email: form.email.value.trim(),
+      message: form.message.value.trim(),
+      company: form.company.value
+    };
+    if (!data.name || !data.email || data.message.length < 10) {
+      say(ru() ? 'Заполните имя, почту и сообщение (от 10 символов).' : 'Please fill in name, email and a message of at least 10 characters.', true);
+      return;
+    }
+    submit.disabled = true;
+    say(ru() ? 'Отправляем…' : 'Sending…', false);
+    fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(function (response) {
+      if (!response.ok) throw new Error('http ' + response.status);
+      form.reset();
+      say(ru() ? 'Письмо отправлено — копия ушла вам на почту.' : 'Sent — a copy is on its way to your inbox.', false);
+    }).catch(function () {
+      say(ru() ? 'Форма недоступна. Откроем почтовый клиент — письмо можно отправить напрямую.' : 'The form is unavailable. Opening your mail client so you can write directly.', true);
+      window.location.href = MAILTO;
+    }).then(function () {
+      submit.disabled = false;
+    });
+  });
+})();
+</script>
 </body>
 </html>
